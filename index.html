@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Merger App (MP3)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 50px;
+    }
+    h1 {
+      color: #333;
+    }
+    input[type="file"] {
+      margin: 10px 0;
+    }
+    button {
+      margin: 10px 5px;
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #output {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+  <!-- Include lamejs (MP3 encoding) -->
+  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.0/lame.min.js"></script>
+  <!-- Include FileSaver.js for better file downloading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+
+<h1>Audio Merger Web App (MP3)</h1>
+<input type="file" id="audioFiles" accept="audio/*" multiple>
+<button onclick="mergeAudio()">Merge Audio</button>
+<div id="output"></div>
+
+<script>
+  async function mergeAudio() {
+    const audioFiles = document.getElementById('audioFiles').files;
+    if (audioFiles.length < 2) {
+      alert("Please select at least two audio files to merge.");
+      return;
+    }
+
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const buffers = [];
+
+    // Load each audio file and decode into audio buffers
+    for (const file of audioFiles) {
+      const arrayBuffer = await file.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      buffers.push(audioBuffer);
+    }
+
+    // Calculate total duration and create a new buffer to hold merged audio
+    const totalDuration = buffers.reduce((sum, buffer) => sum + buffer.duration, 0);
+    const outputBuffer = audioContext.createBuffer(
+      1, // 1 channel (mono)
+      audioContext.sampleRate * totalDuration,
+      audioContext.sampleRate
+    );
+
+    // Copy each buffer's data into the output buffer
+    let offset = 0;
+    for (const buffer of buffers) {
+      outputBuffer.getChannelData(0).set(buffer.getChannelData(0), offset * audioContext.sampleRate);
+      offset += buffer.duration;
+    }
+
+    // Convert the merged buffer to MP3 using lamejs
+    const mp3Blob = bufferToMp3(outputBuffer);
+    
+    // Use FileSaver.js to trigger download of the MP3 file
+    saveAs(mp3Blob, "merged_audio.mp3");
+  }
+
+  // Function to convert an AudioBuffer to an MP3 Blob
+  function bufferToMp3(audioBuffer) {
+    const channelData = audioBuffer.getChannelData(0);
+    const sampleRate = audioBuffer.sampleRate;
+
+    // Create a new LAME MP3 encoder
+    const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128); // 1 channel, sample rate, 128 kbps
+
+    const mp3Data = [];
+    const samples = new Int16Array(channelData.length);
+    
+    // Convert float audio data to 16-bit PCM data
+    for (let i = 0; i < channelData.length; i++) {
+      samples[i] = Math.max(-1, Math.min(1, channelData[i])) * 32767;
+    }
+
+    // Encode PCM samples to MP3
+    let mp3buf = mp3encoder.encodeBuffer(samples);
+    if (mp3buf.length > 0) {
+      mp3Data.push(mp3buf);
+    }
+    
+    // Flush the remaining data
+    mp3buf = mp3encoder.flush();
+    if (mp3buf.length > 0) {
+      mp3Data.push(mp3buf);
+    }
+
+    // Create a Blob from the MP3 data
+    return new Blob(mp3Data, { type: "audio/mp3" });
+  }
+</script>
+
+</body>
+</html>
