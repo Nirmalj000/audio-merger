@@ -17,11 +17,3 @@ This is a simple, user-friendly web app that allows users to merge multiple audi
 2. **Reorder Files**: After selecting your files, reorder them by dragging and dropping in the list. The files will be merged in the order they appear.
 3. **Merge Audio**: Once you're satisfied with the order of the files, click on the **Merge Audio** button to start the merging process.
 4. **Download the MP3**: Once the merge is complete, a download link will appear, allowing you to download the merged MP3 file.
-
-## Installation
-
-To use the Audio Merger Web App, follow these simple steps:
-
-### Prerequisites
-
-You will need a modern web browser (e.g., Chrome, Firefox, Safari) to use this app.
